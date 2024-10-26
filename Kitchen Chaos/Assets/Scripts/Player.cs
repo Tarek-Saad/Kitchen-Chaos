@@ -31,7 +31,13 @@ public class Player : MonoBehaviour
         inputVector = inputVector.normalized;
 
         Vector3 moveDir = new Vector3(inputVector.x ,0f,inputVector.y);
-        transform.position += moveDir * moveSpeed * Time.deltaTime;
+        float moveDist = moveSpeed * Time.deltaTime;
+        float playerRadius = 0.7f;
+        float playerHieght = 2f;
+        bool canMove = !Physics.CapsuleCast(transform.position ,transform.position + Vector3.up * playerHieght ,playerRadius, moveDir ,moveDist);
+        if(canMove){
+            transform.position += moveDir * moveDist;
+        }
 
         transform.forward = Vector3.Slerp( transform.forward,moveDir, Time.deltaTime*10f);
 
