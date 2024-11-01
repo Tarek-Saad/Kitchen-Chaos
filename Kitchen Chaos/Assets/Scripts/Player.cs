@@ -1,51 +1,88 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class Player : MonoBehaviour
 {
+    public static Player Instance { get; private set; }
+    public event EventHandler<OnSelectedCounterChangedEventArgs> OnSelectedCounterChanged;
+
+    public class OnSelectedCounterChangedEventArgs : EventArgs
+    {
+        public ClearCounter selectedCounter;
+    }
+
     [SerializeField] private float moveSpeed = 7f;
 
     private Vector3 lastInteractDir;
-    
+    private ClearCounter selectedCounter;
+
+    private void Start()
+    {
+        GameInput.OnInterAction += GameInput_OnInterAction
+    }
+
+    private void Awake()
+    {
+        if (Instance != null)
+        {
+            Debug.LogError("eeeeeeeeeeeeeeeeeeeeeeeeeeeeror");
+        }
+        Instance = this;
+    }
+
+   
 
     private void Update()
     {
         HandleMovement();
         HandleInteractions();
+
+       
+    }
+
+    private void GameInput_OnInterAction(object sender, System.EventArgs e)
+    {
+        if (selectedCounter != null)
+        {
+            selectedCounter.Interact();
+        }
     }
 
     private void HandleInteractions()
     {
-        // Update inputVector with user input
         Vector2 inputVector = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
         inputVector = inputVector.normalized;
 
-        // Create move direction based on input
         Vector3 moveDir = new Vector3(inputVector.x, 0f, inputVector.y);
 
-        if (moveDir != Vector3.zero) { 
+        if (moveDir != Vector3.zero)
+        {
             lastInteractDir = moveDir;
         }
 
         float interactDistance = 2f;
         if (Physics.Raycast(transform.position, lastInteractDir, out RaycastHit raycastHit, interactDistance))
         {
-            // Raycast hit, logging the transform of the hit object
-            //Debug.Log(raycastHit.transform.name);
             if (raycastHit.transform.TryGetComponent(out ClearCounter clearCounter))
             {
-                // has a clear counter
+                if (clearCounter != selectedCounter)
+                {
+                    SetSelectedCounter(clearCounter);
+                }
                 clearCounter.Interact();
+            }
+            else
+            {
+                SetSelectedCounter(null);
             }
         }
         else
         {
-            // Optional debug if no interaction detected
-            // Debug.Log("No interaction");
+            SetSelectedCounter(null);
         }
     }
-
 
     private void HandleMovement()
     {
@@ -73,14 +110,27 @@ public class Player : MonoBehaviour
         Vector3 moveDir = new Vector3(inputVector.x, 0f, inputVector.y);
         float moveDist = moveSpeed * Time.deltaTime;
         float playerRadius = 0.7f;
-        float playerHieght = 2f;
-        bool canMove = !Physics.CapsuleCast(transform.position, transform.position + Vector3.up * playerHieght, playerRadius, moveDir, moveDist);
+        float playerHeight = 2f;
+        bool canMove = !Physics.CapsuleCast(transform.position, transform.position + Vector3.up * playerHeight, playerRadius, moveDir, moveDist);
+
         if (canMove)
         {
             transform.position += moveDir * moveDist;
         }
 
-        transform.forward = Vector3.Slerp(transform.forward, moveDir, Time.deltaTime * 10f);
+        if (moveDir != Vector3.zero)
+        {
+            transform.forward = Vector3.Slerp(transform.forward, moveDir, Time.deltaTime * 10f);
+        }
     }
 
+    private void SetSelectedCounter(ClearCounter selectedCounter)
+    {
+        this.selectedCounter = selectedCounter;
+
+        OnSelectedCounterChanged?.Invoke(this, new OnSelectedCounterChangedEventArgs
+        {
+            selectedCounter = selectedCounter
+        });
+    }
 }
